@@ -2,10 +2,10 @@ package nexor
 
 import (
 	"context"
+	"google.golang.org/protobuf/proto"
 	"log"
 
 	"github.com/nats-io/nats.go"
-	"google.golang.org/protobuf/proto"
 )
 
 // Publish publishes a protobuf message to the specified NATS subject.

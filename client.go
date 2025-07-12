@@ -19,9 +19,11 @@ type Client interface {
 	Subscribe(subject string, durable string, factory func() proto.Message, handler ProtoHandler, opts ...nats.SubOpt) error
 	JetStream() nats.JetStreamContext
 	Close()
-	GetEngine() *nexor
-	Request(ctx context.Context, subject string, req proto.Message, factory func() proto.Message, timeout time.Duration) (proto.Message, error)
+	GetEngine() *nats.Conn
+	Request(ctx context.Context, subject string, req proto.Message, factory func() proto.Message) (proto.Message, error)
+	RequestBytes(ctx context.Context, subject string, data []byte) ([]byte, error)
 	Reply(subject string, reqFactory func() proto.Message, handler func(context.Context, proto.Message) (proto.Message, error)) error
+	ReplyBytes(subject string, handler func([]byte) []byte) error
 }
 
 // Nexor represents a NATS client with JetStream support.
@@ -31,8 +33,8 @@ type nexor struct {
 	cfg  *nexorConfig          // Configuration for the NATS client
 }
 
-func (n *nexor) GetEngine() *nexor {
-	return n
+func (n *nexor) GetEngine() *nats.Conn {
+	return n.conn
 }
 
 func (n *nexor) Connect() {

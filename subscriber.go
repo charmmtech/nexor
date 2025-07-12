@@ -5,11 +5,11 @@ package nexor
 
 import (
 	"context"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"google.golang.org/protobuf/proto"
 )
 
 // ProtoHandler is a function type that defines the signature for handling protobuf messages.

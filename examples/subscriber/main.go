@@ -19,12 +19,10 @@ func init() {
 }
 
 func main() {
-	// Initialize the event bus
-	eventBus := client.GetEngine()
-	defer eventBus.Close()
+	defer client.Close()
 
 	// Subscribe to the "product.created" event
-	err := eventBus.Subscribe("product.created", "product_created_consumer", func() proto.Message {
+	err := client.Subscribe("nexor.product.created", "product_created_consumer", func() proto.Message {
 		return &v1.ProductCreated{} // Factory method to create a specific event type
 	}, func(ctx context.Context, msg proto.Message, m *nats.Msg) error {
 		log.Println("🔥 event received via subject:", m.Subject)

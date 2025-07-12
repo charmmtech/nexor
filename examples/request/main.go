@@ -1,12 +1,7 @@
 package main
 
 import (
-	"context"
 	"github.com/shoot3rs/nexor"
-	v1 "github.com/shoot3rs/nexor/gen/shooters/nexor/v1"
-	"google.golang.org/protobuf/proto"
-	"log"
-	"time"
 )
 
 var (
@@ -18,13 +13,26 @@ func init() {
 }
 
 func main() {
-	ctx := context.Background()
-	resp, err := client.Request(ctx, "example.say.hello", &v1.SayHelloRequest{Name: "Joey"}, func() proto.Message { return &v1.SayHelloResponse{} }, 3*time.Second)
-	if err != nil {
-		log.Println("🚨 response error:", err)
-	}
+	defer client.Close()
 
-	response := resp.(*v1.SayHelloResponse)
-
-	log.Println("==== 📣 Response==== :", response.GetMessage())
+	//ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	//defer cancel()
+	//
+	//req := &campaignv1.GetCampaignRequest{
+	//	Id: "b316c95a-72c7-4ecd-89ff-fe1d47d357e7",
+	//}
+	//pb, err := proto.Marshal(req)
+	//if err != nil {
+	//	log.Fatalln("marshaling error: ", err)
+	//}
+	//
+	//resp, err := client.RequestBytes(ctx, "example.raw", pb)
+	//if err != nil {
+	//	log.Fatalln("[🚨] response error:", err)
+	//}
+	//
+	//response := &campaignv1.GetCampaignRequest{}
+	//_ = proto.Unmarshal(resp, response)
+	//
+	//log.Println("==== 📣 Response ==== :\n", response)
 }

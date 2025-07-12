@@ -22,15 +22,13 @@ func init() {
 
 func main() {
 	// Initialize the event bus
-	eventBus := client.GetEngine()
-	js := eventBus.JetStream()
-	defer eventBus.Close()
+	js := client.JetStream()
+	defer client.Close()
 
 	// Create a stream (e.g. product.*)
 	_, err := js.AddStream(&nats.StreamConfig{
-		Name:     "PRODUCT_EVENTS",
-		Subjects: []string{"product.*"},
-		Storage:  nats.FileStorage,
+		Name:     "nexor_product_events",
+		Subjects: []string{"nexor.product.*"},
 	})
 	if err != nil && !strings.Contains(err.Error(), "stream name already in use") {
 		log.Fatalf("❌ Failed to create stream: %v", err)
@@ -53,7 +51,7 @@ func main() {
 		}
 
 		// Publish the event
-		if err := eventBus.Publish(context.Background(), "product.created", event); err != nil {
+		if err := client.Publish(context.Background(), "nexor.product.created", event); err != nil {
 			log.Fatalf("Failed to publish event: %v", err)
 		}
 
