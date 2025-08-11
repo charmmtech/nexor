@@ -24,7 +24,7 @@ type Client interface {
 	Publish(ctx context.Context, subject string, msg proto.Message, opts ...jetstream.PublishOpt) error
 	Reply(subject string, reqFactory func() proto.Message, handler func(context.Context, proto.Message) (proto.Message, error)) error
 	Request(ctx context.Context, subject string, req proto.Message, factory func() proto.Message, timeout time.Duration) (proto.Message, error)
-	Subscribe(ctx context.Context, subject string, durable string, factory func() proto.Message, handler ProtoHandler, opts ...jetstream.PullConsumeOpt) error
+	Subscribe(ctx context.Context, subject, stream, durable string, factory func() proto.Message, handler ProtoHandler, opts ...jetstream.PullConsumeOpt) error
 }
 
 // Nexor represents a NATS client with JetStream support.
@@ -93,23 +93,19 @@ func getConfig() *nexorConfig {
 	var debugMode = false
 	var clientName = "Nexor"
 	var maxConn, maxWait = 5, 5
-	debugModeValue, found := os.LookupEnv("NEXOR.DEBUG")
-	if found {
+	if debugModeValue, found := os.LookupEnv("NEXOR.DEBUG"); found {
 		debugMode = debugModeValue == "true"
 	}
 
-	clientNameValue, found := os.LookupEnv("NEXOR.CLIENT")
-	if found {
+	if clientNameValue, found := os.LookupEnv("NEXOR.CLIENT"); found {
 		clientName = clientNameValue
 	}
 
-	maxConnValue := os.Getenv("NEXOR.MAX_CONNECTIONS")
-	if maxConnValue != "" {
+	if maxConnValue := os.Getenv("NEXOR.MAX_CONNECTIONS"); maxConnValue != "" {
 		maxConn, _ = strconv.Atoi(maxConnValue)
 	}
 
-	maxWaitValue := os.Getenv("NEXOR.MAX_RECONNECT_WAIT")
-	if maxWaitValue != "" {
+	if maxWaitValue := os.Getenv("NEXOR.MAX_RECONNECT_WAIT"); maxWaitValue != "" {
 		maxWait, _ = strconv.Atoi(maxWaitValue)
 	}
 

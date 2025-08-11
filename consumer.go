@@ -31,6 +31,7 @@ type Subscriber interface {
 //
 // Parameters:
 //   - subject: The NATS subject to subscribe to
+//   - stream: The stream name for the subscription (for JetStream persistence)
 //   - durable: The durable name for the subscription (for JetStream persistence)
 //   - factory: A function that creates new instances of the protobuf message type
 //   - handler: A function that processes decoded protobuf messages
@@ -46,17 +47,18 @@ type Subscriber interface {
 func (n *nexor) Subscribe(
 	ctx context.Context,
 	subject string,
+	stream string,
 	durable string,
 	factory func() proto.Message,
 	handler ProtoHandler,
 	opts ...jetstream.PullConsumeOpt,
 ) error {
-	stream, err := n.js.Stream(ctx, durable)
+	jetStream, err := n.js.Stream(ctx, stream)
 	if err != nil {
 		return err
 	}
 
-	consumer, err := stream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
+	consumer, err := jetStream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
 		Name:          durable,
 		Durable:       durable,
 		AckWait:       30 * time.Second,
