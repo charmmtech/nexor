@@ -5,30 +5,42 @@ package nexor
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
-	"google.golang.org/protobuf/proto"
 	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
+	"google.golang.org/protobuf/proto"
 )
 
 type Client interface {
-	Publish(ctx context.Context, subject string, msg proto.Message, opts ...nats.PubOpt) error
-	Connect()
-	Subscribe(subject string, durable string, factory func() proto.Message, handler ProtoHandler, opts ...nats.SubOpt) error
-	JetStream() nats.JetStreamContext
 	Close()
+	Connect()
+	CreateStream(ctx context.Context, config jetstream.StreamConfig) error
 	GetEngine() *nexor
-	Request(ctx context.Context, subject string, req proto.Message, factory func() proto.Message, timeout time.Duration) (proto.Message, error)
+	JetStream() jetstream.JetStream
+	Publish(ctx context.Context, subject string, msg proto.Message, opts ...jetstream.PublishOpt) error
 	Reply(subject string, reqFactory func() proto.Message, handler func(context.Context, proto.Message) (proto.Message, error)) error
+	Request(ctx context.Context, subject string, req proto.Message, factory func() proto.Message, timeout time.Duration) (proto.Message, error)
+	Subscribe(ctx context.Context, subject string, durable string, factory func() proto.Message, handler ProtoHandler, opts ...jetstream.PullConsumeOpt) error
 }
 
 // Nexor represents a NATS client with JetStream support.
 type nexor struct {
-	conn *nats.Conn            // Connection to the NATS server
-	js   nats.JetStreamContext // JetStream context for pub/sub operations
-	cfg  *nexorConfig          // Configuration for the NATS client
+	conn *nats.Conn          // Connection to the NATS server
+	js   jetstream.JetStream // JetStream context for pub/sub operations
+	cfg  *nexorConfig        // Configuration for the NATS client
+}
+
+func (n *nexor) CreateStream(ctx context.Context, config jetstream.StreamConfig) error {
+	_, err := n.js.CreateOrUpdateStream(ctx, config)
+	if err != nil {
+		log.Fatalf("🚨 Failed to create stream: %v", err)
+	}
+
+	return nil
 }
 
 func (n *nexor) GetEngine() *nexor {
@@ -45,7 +57,7 @@ func (n *nexor) Connect() {
 		os.Exit(1)
 	}
 
-	js, err := conn.JetStream()
+	js, err := jetstream.New(conn)
 	if err != nil {
 		if n.cfg.Debug {
 			log.Printf("🔌 Failed to connect to Jetstream: %v 🔌", err)
@@ -138,6 +150,6 @@ func (n *nexor) Close() {
 
 // JetStream exposes the underlying JetStream context
 // so that microservices can create/manage streams and consumers.
-func (n *nexor) JetStream() nats.JetStreamContext {
+func (n *nexor) JetStream() jetstream.JetStream {
 	return n.js
 }

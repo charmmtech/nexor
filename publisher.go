@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,7 +19,7 @@ import (
 //
 // Returns:
 //   - error: Returns an error if marshaling fails or if publishing fails
-func (n *nexor) Publish(ctx context.Context, subject string, msg proto.Message, opts ...nats.PubOpt) error {
+func (n *nexor) Publish(ctx context.Context, subject string, msg proto.Message, opts ...jetstream.PublishOpt) error {
 	data, err := proto.Marshal(msg)
 	if err != nil {
 		if n.cfg.Debug {
@@ -29,7 +29,7 @@ func (n *nexor) Publish(ctx context.Context, subject string, msg proto.Message, 
 		return err
 	}
 
-	ack, err := n.js.Publish(subject, data, opts...)
+	ack, err := n.js.Publish(ctx, subject, data, opts...)
 	if err != nil {
 		if n.cfg.Debug {
 			log.Printf("❌ nexor: failed to publish message: %v", err)

@@ -8,21 +8,21 @@ import (
 	"log"
 	"time"
 
-	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"google.golang.org/protobuf/proto"
 )
 
 // ProtoHandler is a function type that defines the signature for handling protobuf messages.
 // It processes a decoded protobuf message along with its NATS message context and returns an error if processing fails.
-type ProtoHandler func(ctx context.Context, msg proto.Message, m *nats.Msg) error
+type ProtoHandler func(ctx context.Context, msg proto.Message, m jetstream.Msg) error
 
 // Subscriber interface defines the contract for types that can handle protobuf message subscriptions.
 // It requires implementations to provide both the protobuf message type and a handler function.
 type Subscriber interface {
-	// ProtoMessage returns a new instance of the protobuf message type that this subscriber handles
+	// ProtoMessage returns a new instance of the protobuf message type that this consumer handles
 	ProtoMessage() proto.Message
 	// Handler processes the received protobuf message and its associated NATS message
-	Handler(ctx context.Context, msg proto.Message, m *nats.Msg) error
+	Handler(ctx context.Context, msg proto.Message, m jetstream.Msg) error
 }
 
 // Subscribe sets up a subscription to a NATS subject with protobuf message handling.
@@ -44,29 +44,35 @@ type Subscriber interface {
 // Returns:
 //   - error: Returns an error if the subscription setup fails
 func (n *nexor) Subscribe(
+	ctx context.Context,
 	subject string,
 	durable string,
 	factory func() proto.Message,
 	handler ProtoHandler,
-	opts ...nats.SubOpt,
+	opts ...jetstream.PullConsumeOpt,
 ) error {
-	// Default options for the subscription
-	defaultOpts := []nats.SubOpt{
-		nats.Durable(durable),          // Use a durable subscription
-		nats.ManualAck(),               // Acknowledge messages manually
-		nats.AckWait(30 * time.Second), // Wait for ack within 30 seconds
+	stream, err := n.js.Stream(ctx, durable)
+	if err != nil {
+		return err
 	}
 
-	// Merge any user-defined options with the default options
-	opts = append(defaultOpts, opts...)
+	consumer, err := stream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
+		Name:          durable,
+		Durable:       durable,
+		AckWait:       30 * time.Second,
+		FilterSubject: subject,
+	})
+	if err != nil {
+		return err
+	}
 
 	// Subscribe to the subject with the provided options
-	_, err := n.js.Subscribe(subject, func(m *nats.Msg) {
+	_, err = consumer.Consume(func(m jetstream.Msg) {
 		// Create a new instance of the protobuf message
 		msg := factory()
-		if err := proto.Unmarshal(m.Data, msg); err != nil {
+		if err := proto.Unmarshal(m.Data(), msg); err != nil {
 			if n.cfg.Debug {
-				log.Printf("❌ nexor: failed to decode protobuf: %v", err)
+				log.Printf("🚨 nexor: failed to decode protobuf: %v", err)
 			}
 
 			_ = m.Nak() // NACK to let NATS know we couldn't process the message
@@ -74,9 +80,9 @@ func (n *nexor) Subscribe(
 		}
 
 		// Call the handler to process the message
-		if err := handler(context.Background(), msg, m); err != nil {
+		if err := handler(ctx, msg, m); err != nil {
 			if n.cfg.Debug {
-				log.Printf("❌ nexor: handler error: %v", err)
+				log.Printf("🚨 nexor: handler error: %v", err)
 			}
 
 			_ = m.Nak() // NACK if the handler fails

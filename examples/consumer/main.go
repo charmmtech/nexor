@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/nats-io/nats.go"
+	"log"
+
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/shoot3rs/nexor"
 	v1 "github.com/shoot3rs/nexor/gen/shooters/nexor/v1"
 	"google.golang.org/protobuf/proto"
-	"log"
 )
 
 var (
@@ -20,34 +21,35 @@ func init() {
 
 func main() {
 	// Initialize the event bus
-	eventBus := client.GetEngine()
-	defer eventBus.Close()
+	defer client.Close()
+
+	ctx := context.Background()
 
 	// Subscribe to the "product.created" event
-	err := eventBus.Subscribe("product.created", "product_created_consumer", func() proto.Message {
-		return &v1.ProductCreated{} // Factory method to create a specific event type
-	}, func(ctx context.Context, msg proto.Message, m *nats.Msg) error {
-		log.Println("🔥 event received via subject:", m.Subject)
+	err := client.Subscribe(ctx, "sample.updated", "SAMPLE_EVENTS", func() proto.Message {
+		return &v1.Event{} // Factory method to create a specific event type
+	}, func(ctx context.Context, msg proto.Message, m jetstream.Msg) error {
+		log.Println("🔥 event received via subject:", m.Subject())
 
 		// Type asserts the message to a specific event type
-		productCreatedEvent, ok := msg.(*v1.ProductCreated)
+		event, ok := msg.(*v1.Event)
 		if !ok {
 			log.Printf("👻 Received an unknown message type")
 			return errors.New("unknown message type")
 		}
 
 		// Handle the event
-		log.Printf("🔥 Product Created: %v", productCreatedEvent.String())
+		log.Printf("🔥 Event Created: %v", event.String())
 
 		if err := m.Ack(); err != nil {
-			log.Println("❌ Failed to acknowledge message:", err)
+			log.Println("🚨 Failed to acknowledge message:", err)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		log.Fatalf("❌ Failed to subscribe to product.created event: %v", err)
+		log.Fatalf("🚨 Failed to subscribe to sample.created event: %v", err)
 	}
 
 	// Keep the main function running to receive events
