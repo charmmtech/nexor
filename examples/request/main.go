@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"log"
+	"time"
+
 	"github.com/shoot3rs/nexor"
 	v1 "github.com/shoot3rs/nexor/gen/shooters/nexor/v1"
 	"google.golang.org/protobuf/proto"
-	"log"
-	"time"
 )
 
 var (
@@ -18,6 +19,8 @@ func init() {
 }
 
 func main() {
+	defer client.Close()
+
 	ctx := context.Background()
 	resp, err := client.Request(ctx, "example.say.hello", &v1.SayHelloRequest{Name: "Joey"}, func() proto.Message { return &v1.SayHelloResponse{} }, 3*time.Second)
 	if err != nil {

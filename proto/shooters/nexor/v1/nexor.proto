@@ -13,3 +13,11 @@ message Event {
   string name = 1;
   ProductCreated product = 2;
 }
+
+message SayHelloRequest {
+  string name = 1;
+}
+
+message SayHelloResponse {
+  string message = 1;
+}
