@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/charmmtech/nexor"
-	v1 "github.com/charmmtech/nexor/gen/shooters/nexor/v1"
+	v1 "github.com/charmmtech/nexor/gen/charmmtech/nexor/v1"
+	"github.com/charmmtech/nextools"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go/jetstream"
 )
 
 var (
-	client = nexor.New("nats://localhost:4222")
+	logger = nextools.NewLoggerBuilder().Build()
+	client = nexor.New("nats://localhost:4222", logger)
 )
 
 func init() {
@@ -56,10 +56,10 @@ func main() {
 
 		// Publish the event
 		if err := client.Publish(ctx, subject, event); err != nil {
-			log.Fatalf("🚨 Failed to publish event: %v", err)
+			logger.Error("🚨 Failed to publish event: %v", nextools.Err(err))
 		}
 
-		fmt.Printf("🚀 Event published to subject: %s successfully! 🚀\n", subject)
+		logger.OK("🚀 Event published to subject: %s successfully! 🚀\n", nextools.F("subject", subject))
 
 		time.Sleep(time.Duration(3) * time.Second)
 	}

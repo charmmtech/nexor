@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/charmmtech/nexor"
-	v1 "github.com/charmmtech/nexor/gen/shooters/nexor/v1"
+	v1 "github.com/charmmtech/nexor/gen/charmmtech/nexor/v1"
 	"log"
 	"strings"
 	"time"
@@ -83,7 +83,7 @@ import (
 	"errors"
 	"github.com/nats-io/nats.go"
 	"github.com/charmmtech/nexor"
-	v1 "github.com/charmmtech/nexor/gen/shooters/nexor/v1"
+	v1 "github.com/charmmtech/nexor/gen/charmmtech/nexor/v1"
 	"google.golang.org/protobuf/proto"
 	"log"
 )
