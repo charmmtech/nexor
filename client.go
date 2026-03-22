@@ -5,11 +5,11 @@ package nexor
 
 import (
 	"context"
-	"log"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/charmmtech/nextools"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"google.golang.org/protobuf/proto"
@@ -29,15 +29,17 @@ type Client interface {
 
 // Nexor represents a NATS client with JetStream support.
 type nexor struct {
-	conn *nats.Conn          // Connection to the NATS server
-	js   jetstream.JetStream // JetStream context for pub/sub operations
-	cfg  *nexorConfig        // Configuration for the NATS client
+	conn   *nats.Conn          // Connection to the NATS server
+	js     jetstream.JetStream // JetStream context for pub/sub operations
+	cfg    *nexorConfig        // Configuration for the NATS client
+	logger nextools.LoggerClient
 }
 
 func (n *nexor) CreateStream(ctx context.Context, config jetstream.StreamConfig) error {
 	_, err := n.js.CreateOrUpdateStream(ctx, config)
 	if err != nil {
-		log.Fatalf("🚨 Failed to create stream: %v", err)
+		n.logger.Error("🚨 Failed to create stream: %v", nextools.Err(err))
+		os.Exit(1)
 	}
 
 	return nil
@@ -51,7 +53,7 @@ func (n *nexor) Connect() {
 	conn, err := nats.Connect(n.cfg.Url, n.cfg.Opts...)
 	if err != nil {
 		if n.cfg.Debug {
-			log.Printf("🔌 Failed to connect to NATS: %v 🔌\n\n", err)
+			n.logger.Error("🔌 Failed to connect to NATS: %v 🔌\n\n", nextools.Err(err))
 			os.Exit(1)
 		}
 		os.Exit(1)
@@ -60,7 +62,7 @@ func (n *nexor) Connect() {
 	js, err := jetstream.New(conn)
 	if err != nil {
 		if n.cfg.Debug {
-			log.Printf("🔌 Failed to connect to Jetstream: %v 🔌", err)
+			n.logger.Error("🔌 Failed to connect to Jetstream: %v 🔌", nextools.Err(err))
 			os.Exit(1)
 		}
 
@@ -72,7 +74,7 @@ func (n *nexor) Connect() {
 	n.js = js
 
 	if n.cfg.Debug {
-		log.Printf("🚀 Connected to NATS server successful 🚀\n")
+		n.logger.OK("🚀 Connected to NATS server successful 🚀")
 	}
 }
 
@@ -121,7 +123,7 @@ func getConfig() *nexorConfig {
 // It accepts a URL string and optional NATS options. If no options are provided,
 // it uses default configuration values from environment variables.
 // Returns a configured Nexor instance and any error encountered during connection.
-func New(url string, opts ...nats.Option) Client {
+func New(url string, logger nextools.LoggerClient, opts ...nats.Option) Client {
 	cfg := getConfig()
 	cfg.Url = url
 	cfg.Opts = opts
@@ -134,7 +136,7 @@ func New(url string, opts ...nats.Option) Client {
 		}
 	}
 
-	return &nexor{cfg: cfg}
+	return &nexor{cfg: cfg, logger: logger}
 }
 
 // Close safely closes the NATS connection.

@@ -249,7 +249,7 @@ const file_shooters_nexor_v1_nexor_proto_rawDesc = "" +
 	"\x10SayHelloResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessageB\xba\x01\n" +
 	"\x15com.shooters.nexor.v1B\n" +
-	"NexorProtoP\x01Z/github.com/shoot3rs/nexor/gen/shooters/nexor/v1\xa2\x02\x03SNX\xaa\x02\x11Shooters.Nexor.V1\xca\x02\x11Shooters\\Nexor\\V1\xe2\x02\x1dShooters\\Nexor\\V1\\GPBMetadata\xea\x02\x13Shooters::Nexor::V1b\x06proto3"
+	"NexorProtoP\x01Z/github.com/charmmtech/nexor/gen/shooters/nexor/v1\xa2\x02\x03SNX\xaa\x02\x11Shooters.Nexor.V1\xca\x02\x11Shooters\\Nexor\\V1\xe2\x02\x1dShooters\\Nexor\\V1\\GPBMetadata\xea\x02\x13Shooters::Nexor::V1b\x06proto3"
 
 var (
 	file_shooters_nexor_v1_nexor_proto_rawDescOnce sync.Once

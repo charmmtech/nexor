@@ -6,7 +6,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package
-      value: github.com/shoot3rs/nexor/gen/shooters/nexor/v1
+      value: github.com/charmmtech/nexor/gen/shooters/nexor/v1
   disable:
     - file_option: go_package
       module: buf.build/googleapis/googleapis

@@ -5,9 +5,9 @@ package nexor
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/charmmtech/nextools"
 	"github.com/nats-io/nats.go/jetstream"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,7 +74,7 @@ func (n *nexor) Subscribe(
 		msg := factory()
 		if err := proto.Unmarshal(m.Data(), msg); err != nil {
 			if n.cfg.Debug {
-				log.Printf("🚨 nexor: failed to decode protobuf: %v", err)
+				n.logger.Error("🚨 nexor: failed to decode protobuf: %v", nextools.Err(err))
 			}
 
 			_ = m.Nak() // NACK to let NATS know we couldn't process the message
@@ -84,7 +84,7 @@ func (n *nexor) Subscribe(
 		// Call the handler to process the message
 		if err := handler(ctx, msg, m); err != nil {
 			if n.cfg.Debug {
-				log.Printf("🚨 nexor: handler error: %v", err)
+				n.logger.Error("🚨 nexor: handler error: %v", nextools.Err(err))
 			}
 
 			_ = m.Nak() // NACK if the handler fails
@@ -94,13 +94,13 @@ func (n *nexor) Subscribe(
 
 	if err != nil {
 		if n.cfg.Debug {
-			log.Printf("❌ nexor: failed to subscribe to subject: %s: %v", subject, err)
+			n.logger.Error("❌ nexor: failed to subscribe to subject: %s: %v", nextools.F("subject", subject), nextools.Err(err))
 		}
 		return err
 	}
 
 	if n.cfg.Debug {
-		log.Printf("🚀 nexor: successfully subscribed to subject: %s", subject)
+		n.logger.OK("🚀 nexor: successfully subscribed to subject: %s", nextools.F("subject", subject))
 	}
 
 	return err

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"log"
 
+	"github.com/charmmtech/nexor"
+	v1 "github.com/charmmtech/nexor/gen/shooters/nexor/v1"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/shoot3rs/nexor"
-	v1 "github.com/shoot3rs/nexor/gen/shooters/nexor/v1"
 	"google.golang.org/protobuf/proto"
 )
 

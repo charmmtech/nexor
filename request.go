@@ -2,9 +2,10 @@ package nexor
 
 import (
 	"context"
-	"google.golang.org/protobuf/proto"
-	"log"
 	"time"
+
+	"github.com/charmmtech/nextools"
+	"google.golang.org/protobuf/proto"
 )
 
 // Request sends a protobuf message as a request and waits for a protobuf reply.
@@ -16,7 +17,7 @@ func (n *nexor) Request(ctx context.Context, subject string, req proto.Message, 
 	data, err := proto.Marshal(req)
 	if err != nil {
 		if n.cfg.Debug {
-			log.Printf("❌ nexor: failed to marshal request: %v", err)
+			n.logger.Error("❌ nexor: failed to marshal request: %v", nextools.Err(err))
 		}
 		return nil, err
 	}
@@ -24,7 +25,7 @@ func (n *nexor) Request(ctx context.Context, subject string, req proto.Message, 
 	msg, err := n.conn.RequestWithContext(ctx, subject, data)
 	if err != nil {
 		if n.cfg.Debug {
-			log.Printf("❌ nexor: request error: %v", err)
+			n.logger.Error("❌ nexor: request error: %v", nextools.Err(err))
 		}
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func (n *nexor) Request(ctx context.Context, subject string, req proto.Message, 
 	reply := factory()
 	if err := proto.Unmarshal(msg.Data, reply); err != nil {
 		if n.cfg.Debug {
-			log.Printf("❌ nexor: failed to unmarshal response: %v", err)
+			n.logger.Error("❌ nexor: failed to unmarshal response: %v", nextools.Err(err))
 		}
 		return nil, err
 	}

@@ -2,9 +2,10 @@ package nexor
 
 import (
 	"context"
+
+	"github.com/charmmtech/nextools"
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
-	"log"
 )
 
 // Reply sets up a handler that receives protobuf request messages and responds with protobuf replies.
@@ -16,7 +17,7 @@ func (n *nexor) Reply(subject string, reqFactory func() proto.Message, handler f
 		req := reqFactory()
 		if err := proto.Unmarshal(m.Data, req); err != nil {
 			if n.cfg.Debug {
-				log.Printf("❌ nexor: failed to unmarshal request: %v", err)
+				n.logger.Error("❌ nexor: failed to unmarshal request: %v", nextools.Err(err))
 			}
 			return
 		}
@@ -24,7 +25,7 @@ func (n *nexor) Reply(subject string, reqFactory func() proto.Message, handler f
 		resp, err := handler(context.Background(), req)
 		if err != nil {
 			if n.cfg.Debug {
-				log.Printf("❌ nexor: request handler failed: %v", err)
+				n.logger.Error("❌ nexor: request handler failed: %v", nextools.Err(err))
 			}
 			// Optionally send an error message (could serialize error into protobuf)
 			_ = m.Respond([]byte{})
@@ -34,7 +35,7 @@ func (n *nexor) Reply(subject string, reqFactory func() proto.Message, handler f
 		data, err := proto.Marshal(resp)
 		if err != nil {
 			if n.cfg.Debug {
-				log.Printf("❌ nexor: failed to marshal response: %v", err)
+				n.logger.Error("❌ nexor: failed to marshal response: %v", nextools.Err(err))
 			}
 			return
 		}
@@ -43,7 +44,7 @@ func (n *nexor) Reply(subject string, reqFactory func() proto.Message, handler f
 	})
 
 	if err != nil && n.cfg.Debug {
-		log.Printf("❌ nexor: failed to subscribe for reply on %s: %v", subject, err)
+		n.logger.Info("❌ nexor: failed to subscribe for reply on %s: %v", nextools.F("subject", subject))
 	}
 
 	return err

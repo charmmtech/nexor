@@ -1,17 +1,18 @@
-module github.com/shoot3rs/nexor
+module github.com/charmmtech/nexor
 
-go 1.24
+go 1.25.0
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/nats-io/nats.go v1.44.0
-	google.golang.org/protobuf v1.36.7
+	github.com/nats-io/nats.go v1.49.0
+	google.golang.org/protobuf v1.36.11
+	github.com/charmmtech/nextools v0.0.8
 )
 
 require (
-	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/nats-io/nkeys v0.4.11 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
+	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 )
