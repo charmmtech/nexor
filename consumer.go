@@ -5,6 +5,7 @@ package nexor
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/charmmtech/nextools"
@@ -25,6 +26,36 @@ type Subscriber interface {
 	Handler(ctx context.Context, msg proto.Message, m jetstream.Msg) error
 }
 
+const (
+	// DefaultAckWait is how long JetStream waits for an ack before redelivering a message.
+	DefaultAckWait = 30 * time.Second
+	// DefaultMaxDeliver caps how many times JetStream delivers a message to a consumer.
+	// Without a cap, a message that is never acked or keeps failing is redelivered forever.
+	DefaultMaxDeliver = 10
+)
+
+// redeliveryBackoff is the delay before a failed message is redelivered, indexed by delivery attempt.
+var redeliveryBackoff = []time.Duration{
+	5 * time.Second,
+	15 * time.Second,
+	30 * time.Second,
+	time.Minute,
+	2 * time.Minute,
+	5 * time.Minute,
+}
+
+// redeliveryDelay returns how long to wait before redelivering a message that failed on its nth delivery.
+func redeliveryDelay(numDelivered uint64) time.Duration {
+	if numDelivered == 0 {
+		numDelivered = 1
+	}
+	index := int(numDelivered) - 1
+	if index >= len(redeliveryBackoff) {
+		index = len(redeliveryBackoff) - 1
+	}
+	return redeliveryBackoff[index]
+}
+
 // Subscribe sets up a subscription to a NATS subject with protobuf message handling.
 // It automatically decodes incoming messages using the provided protobuf message factory
 // and processes them with the specified handler.
@@ -39,7 +70,9 @@ type Subscriber interface {
 //
 // Default behavior:
 //   - Uses durable subscriptions for message persistence
-//   - Requires manual message acknowledgment
+//   - Acks the message when the handler returns nil (handlers may also ack themselves)
+//   - Redelivers a failed message after an increasing delay, up to DefaultMaxDeliver deliveries
+//   - Terminates messages that cannot be decoded, since redelivering them can never succeed
 //   - Sets a 30-second acknowledgment timeout
 //
 // Returns:
@@ -61,7 +94,9 @@ func (n *nexor) Subscribe(
 	consumer, err := jetStream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
 		Name:          durable,
 		Durable:       durable,
-		AckWait:       30 * time.Second,
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		AckWait:       DefaultAckWait,
+		MaxDeliver:    DefaultMaxDeliver,
 		FilterSubject: subject,
 	})
 	if err != nil {
@@ -73,22 +108,41 @@ func (n *nexor) Subscribe(
 		// Create a new instance of the protobuf message
 		msg := factory()
 		if err := proto.Unmarshal(m.Data(), msg); err != nil {
-			if n.cfg.Debug {
-				n.logger.Error("🚨 nexor: failed to decode protobuf: %v", nextools.Err(err))
-			}
+			n.logger.Error("🚨 nexor: dropping message that failed to decode: %v", nextools.F("subject", m.Subject()), nextools.Err(err))
 
-			_ = m.Nak() // NACK to let NATS know we couldn't process the message
+			// A message that cannot be decoded will never succeed, so stop redelivering it.
+			_ = m.Term()
 			return
 		}
 
 		// Call the handler to process the message
 		if err := handler(ctx, msg, m); err != nil {
-			if n.cfg.Debug {
-				n.logger.Error("🚨 nexor: handler error: %v", nextools.Err(err))
+			var numDelivered uint64
+			if metadata, metadataErr := m.Metadata(); metadataErr == nil {
+				numDelivered = metadata.NumDelivered
 			}
 
-			_ = m.Nak() // NACK if the handler fails
+			if numDelivered >= DefaultMaxDeliver {
+				n.logger.Error("🚨 nexor: handler failed on final delivery, dropping message: %v", nextools.F("subject", m.Subject()), nextools.Err(err))
+				_ = m.Term()
+				return
+			}
+
+			if n.cfg.Debug {
+				n.logger.Error("🚨 nexor: handler error: %v", nextools.F("subject", m.Subject()), nextools.Err(err))
+			}
+
+			// Redeliver after a delay instead of immediately, so a failing handler does not spin.
+			if nakErr := m.NakWithDelay(redeliveryDelay(numDelivered)); nakErr != nil && !errors.Is(nakErr, jetstream.ErrMsgAlreadyAckd) {
+				n.logger.Error("🚨 nexor: failed to nak message: %v", nextools.F("subject", m.Subject()), nextools.Err(nakErr))
+			}
 			return
+		}
+
+		// Ack on success so JetStream does not redeliver the message after AckWait.
+		// Handlers that already acked are fine: the second ack is a no-op.
+		if ackErr := m.Ack(); ackErr != nil && !errors.Is(ackErr, jetstream.ErrMsgAlreadyAckd) {
+			n.logger.Error("🚨 nexor: failed to ack message: %v", nextools.F("subject", m.Subject()), nextools.Err(ackErr))
 		}
 	}, opts...)
 
